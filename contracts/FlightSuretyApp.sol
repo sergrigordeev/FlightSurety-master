@@ -88,21 +88,18 @@ contract FlightSuretyApp is FlightSuretyBase {
         address airline,
         string flight,
         uint256 timestamp
-    ) external payable requireIsOperational {
+    ) external requireIsOperational payable{
         bytes32 flightKey = getFlightKey(airline, flight, timestamp);
         Flight storage currentFlight = flights[flightKey];
 
         require(currentFlight.isRegistered, "flight is not registered");
+        require(currentFlight.statusCode == STATUS_CODE_UNKNOWN, "flight in transaction");
         require(
-            currentFlight.statusCode == STATUS_CODE_UNKNOWN,
-            "flight in transaction"
+            msg.value <= 1 ether,
+            "only payment up to 1 ether is acceptable"
         );
-        uint256 investment  = msg.value > 1 ether?  1 ether :msg.value;
-        if (msg.value > 1 ether){
-            msg.sender.transfer(msg.value.sub(investment));
-        }
-
-        dataContract.buy.value(investment)(airline, msg.sender, flightKey);
+       
+        dataContract.buy.value(msg.value)(airline, msg.sender, flightKey);
     }
 
     /**
