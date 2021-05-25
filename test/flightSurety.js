@@ -3,7 +3,7 @@ var Test = require('../config/testConfig.js');
 var truffleAssertations = require('truffle-assertions');;
 var BigNumber = require('bignumber.js');
 
-contract('Flight Surety Tests', async (accounts) => {
+contract('[Airline] Flight Surety Tests', async (accounts) => {
 
     var config;
     before('setup contract', async () => {
@@ -122,6 +122,7 @@ contract('Flight Surety Tests', async (accounts) => {
         await truffleAssertations.reverts(config.flightSuretyData.fund({ from: fifthAirline, value: web3.utils.toWei('10', 'ether') }));
 
         await config.flightSuretyApp.registerAirline(fifthAirline, { from: secondAirline });
+        await config.flightSuretyApp.registerAirline(fifthAirline, { from: secondAirline });
         await truffleAssertations.reverts(config.flightSuretyData.fund({ from: fifthAirline, value: web3.utils.toWei('10', 'ether') }));
 
         await config.flightSuretyApp.registerAirline(fifthAirline, { from: thirdAirline });
@@ -133,5 +134,58 @@ contract('Flight Surety Tests', async (accounts) => {
         assert.equal(result, true, "airline should be registerd after multypart consensus");
 
     });
+    it('(airline) owner is first airline', async () => {
+        //ACT
+        let result = await config.flightSuretyData.isAirline.call(config.owner)
+        // ASSERT
+        assert.equal(result, true, "Owner should be the very first active airline");
+    });
+    it('(airline) register flight by active airline', async () => {
 
+        // ARRANGE
+        let newAirline = accounts[2];
+
+        // ACT
+        let result = await config.flightSuretyApp.registerFlight('flight1', 123, { from: newAirline });
+
+        // ASSERT
+
+        truffleAssertations.eventEmitted(result, 'FlightRegisterd', {
+            flight: 'flight1',
+            airline: newAirline,
+            timestamp: web3.utils.toBN(123)
+        }
+            , 'Contract should return the correct event.');
+    });
+
+
+    it('(airline) register flight by stranger', async () => {
+
+        // ARRANGE
+        let caller = accounts[6];
+
+        // ACT | ASSERT
+        await truffleAssertations.reverts(
+            config.flightSuretyApp.registerFlight('flight1', 123, { from: caller })
+        );
+    });
+
+    it('(airline) register flight by inactiveairline', async () => {
+
+        // ARRANGE
+        let caller = accounts[6];
+        let secondAirline = accounts[2];
+        let thirdAirline = accounts[3];
+        let forthAirline = accounts[4];
+        let fifthAirline = accounts[5];
+
+        await config.flightSuretyApp.registerAirline(caller, { from: secondAirline });
+        await config.flightSuretyApp.registerAirline(caller, { from: thirdAirline });
+        await config.flightSuretyApp.registerAirline(caller, { from: forthAirline });
+        await config.flightSuretyApp.registerAirline(caller, { from: fifthAirline });
+        // ACT | ASSERT
+        await truffleAssertations.reverts(
+            config.flightSuretyApp.registerFlight('flight1', 123, { from: caller })
+        );
+    });
 });

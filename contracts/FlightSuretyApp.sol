@@ -5,6 +5,7 @@ pragma solidity ^0.4.25;
 // More info: https://www.nccgroup.trust/us/about-us/newsroom-and-events/blog/2018/november/smart-contract-insecurity-bad-arithmetic/
 
 import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "./FlightSuretyBase.sol";
 
 interface IFlightSuretyData {
     function registerAirline(address airlineAddress) external;
@@ -17,7 +18,7 @@ interface IFlightSuretyData {
 /************************************************** */
 /* FlightSurety Smart Contract                      */
 /************************************************** */
-contract FlightSuretyApp {
+contract FlightSuretyApp is FlightSuretyBase {
     using SafeMath for uint256; // Allow SafeMath functions to be called for all uint256 types (similar to "prototype" in Javascript)
 
     /********************************************************************************************/
@@ -33,9 +34,9 @@ contract FlightSuretyApp {
     uint8 private constant STATUS_CODE_LATE_OTHER = 50;
 
     mapping(address => address[]) private votesMap;
-    address private contractOwner; // Account used to deploy contract
+
     IFlightSuretyData dataContract;
-    bool private operational = true;
+
     struct Flight {
         bool isRegistered;
         uint8 statusCode;
@@ -50,25 +51,6 @@ contract FlightSuretyApp {
 
     // Modifiers help avoid duplication of code. They are typically used to validate something
     // before a function is allowed to be executed.
-
-    /**
-     * @dev Modifier that requires the "operational" boolean variable to be "true"
-     *      This is used on all state changing functions to pause the contract in
-     *      the event there is an issue that needs to be fixed
-     */
-    modifier requireIsOperational() {
-        // Modify to call data contract's status
-        require(operational, "Contract is currently not operational");
-        _; // All modifiers require an "_" which indicates where the function body will be added
-    }
-
-    /**
-     * @dev Modifier that requires the "ContractOwner" account to be the function caller
-     */
-    modifier requireContractOwner() {
-        require(msg.sender == contractOwner, "Caller is not contract owner");
-        _;
-    }
 
     modifier requireActiveAirline() {
         require(dataContract.isAirline(msg.sender), "only active airline");
@@ -85,27 +67,13 @@ contract FlightSuretyApp {
      *
      */
     constructor(address dataAddress) public {
-        contractOwner = msg.sender;
+        setOwner(msg.sender);
         dataContract = IFlightSuretyData(dataAddress);
     }
 
     /********************************************************************************************/
     /*                                       UTILITY FUNCTIONS                                  */
     /********************************************************************************************/
-
-    function isOperational() public view returns (bool) {
-        return operational; // Modify to call data contract's status
-    }
-
-    /**
-     * @dev Sets contract operations on/off
-     *
-     * When operational mode is disabled, all write transactions except for this one will fail
-     */
-
-    function setOperatingStatus(bool mode) external requireContractOwner {
-        operational = mode;
-    }
 
     /********************************************************************************************/
     /*                                     SMART CONTRACT FUNCTIONS                             */
@@ -151,7 +119,19 @@ contract FlightSuretyApp {
      *
      */
 
-    function registerFlight() external pure {}
+    function registerFlight(string flight, uint256 timestamp)
+        external
+        requireActiveAirline
+        requireIsOperational
+    {
+        bytes32 flightKey = getFlightKey(msg.sender, flight, timestamp);
+
+        flights[flightKey].isRegistered = true;
+        flights[flightKey].statusCode = STATUS_CODE_ON_TIME;
+        flights[flightKey].updatedTimestamp = timestamp;
+        flights[flightKey].airline = msg.sender;
+        emit FlightRegisterd(flightKey, msg.sender, flight, timestamp);
+    }
 
     /**
      * @dev Called after oracle has updated flight status
@@ -217,6 +197,12 @@ contract FlightSuretyApp {
     mapping(bytes32 => ResponseInfo) private oracleResponses;
 
     // Event fired each time an oracle submits a response
+    event FlightRegisterd(
+        bytes32 flightKey,
+        address airline,
+        string flight,
+        uint256 timestamp
+    );
     event FlightStatusInfo(
         address airline,
         string flight,
