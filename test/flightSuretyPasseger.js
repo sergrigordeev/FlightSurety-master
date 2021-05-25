@@ -100,8 +100,7 @@ contract('[Passager] Flight Surety Tests', async (accounts) => {
 
         for (let a = 1; a < 10; a++) {
             await config.flightSuretyApp.registerOracle({ from: accounts[a], value: web3.utils.toWei('1', 'ether') });
-            let result = await config.flightSuretyApp.getMyIndexes.call({ from: accounts[a] });
-            console.log(`Oracle Registered: ${result[0]}, ${result[1]}, ${result[2]}`);
+            await config.flightSuretyApp.getMyIndexes.call({ from: accounts[a] });
         }
 
 
@@ -122,7 +121,7 @@ contract('[Passager] Flight Surety Tests', async (accounts) => {
                     await config.flightSuretyApp.submitOracleResponse(oracleIndexes[idx], config.owner, flight, timestamp, STATUS_CODE_LATE_AIRLINE, { from: accounts[a] });
                     await config.flightSuretyApp.submitOracleResponse(oracleIndexes[idx], config.owner, flight, timestamp, STATUS_CODE_LATE_AIRLINE, { from: accounts[a] });
                     await config.flightSuretyApp.submitOracleResponse(oracleIndexes[idx], config.owner, flight, timestamp, STATUS_CODE_LATE_AIRLINE, { from: accounts[a] });
-
+                    
                 }
                 catch (e) {
 
