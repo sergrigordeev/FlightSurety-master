@@ -13,6 +13,12 @@ interface IFlightSuretyData {
     function airlineCount() external returns (uint256);
 
     function isAirline(address airlineAddress) external returns (bool);
+
+    function buy(
+        address airline,
+        address passager,
+        bytes32 flightKey
+    ) external payable;
 }
 
 /************************************************** */
@@ -78,6 +84,23 @@ contract FlightSuretyApp is FlightSuretyBase {
     /********************************************************************************************/
     /*                                     SMART CONTRACT FUNCTIONS                             */
     /********************************************************************************************/
+    function buyInsurance(
+        address airline,
+        string flight,
+        uint256 timestamp
+    ) external requireIsOperational payable{
+        bytes32 flightKey = getFlightKey(airline, flight, timestamp);
+        Flight storage currentFlight = flights[flightKey];
+
+        require(currentFlight.isRegistered, "flight is not registered");
+        require(currentFlight.statusCode == STATUS_CODE_UNKNOWN, "flight in transaction");
+        require(
+            msg.value <= 1 ether,
+            "only payment up to 1 ether is acceptable"
+        );
+       
+        dataContract.buy.value(msg.value)(airline, msg.sender, flightKey);
+    }
 
     /**
      * @dev Add an airline to the registration queue
@@ -118,7 +141,6 @@ contract FlightSuretyApp is FlightSuretyBase {
      * @dev Register a future flight for insuring.
      *
      */
-
     function registerFlight(string flight, uint256 timestamp)
         external
         requireActiveAirline
@@ -127,7 +149,7 @@ contract FlightSuretyApp is FlightSuretyBase {
         bytes32 flightKey = getFlightKey(msg.sender, flight, timestamp);
 
         flights[flightKey].isRegistered = true;
-        flights[flightKey].statusCode = STATUS_CODE_ON_TIME;
+        flights[flightKey].statusCode = STATUS_CODE_UNKNOWN;
         flights[flightKey].updatedTimestamp = timestamp;
         flights[flightKey].airline = msg.sender;
         emit FlightRegisterd(flightKey, msg.sender, flight, timestamp);

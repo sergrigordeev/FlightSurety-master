@@ -62,4 +62,11 @@ contract FlightSuretyBase {
     ) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(airline, flight, timestamp));
     }
+
+    function getInsurancetKey(
+        address passager,
+        bytes32 flightKey
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(passager, flightKey));
+    }
 }
