@@ -7,17 +7,22 @@ contract FlightSuretyData is FlightSuretyBase {
     using SafeMath for uint256;
     event AirlineRegistered(address airlineAddress);
     event AirlineActivated(address airlineAddress);
-    event InsuranceBought(bytes32 insuranceKey, address passager, address airline);
+    event InsuranceBought(
+        bytes32 insuranceKey,
+        address passager,
+        address airline
+    );
     /********************************************************************************************/
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
-     struct Insurance{
-                address passager;
-                address airline;
-                uint256 premiun;
-                bool bought;
-            }
-            
+    struct Insurance {
+        address passager;
+        address airline;
+        uint256 premium;
+        bool bought;
+        bool paid;
+    }
+
     struct Airline {
         uint256 balance;
         bool active;
@@ -28,6 +33,7 @@ contract FlightSuretyData is FlightSuretyBase {
     mapping(address => bool) private authorizedContracts;
     mapping(address => Airline) private airlines;
     mapping(bytes32 => Insurance) private insurances;
+    mapping(address => uint256) private forPay;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -119,29 +125,58 @@ contract FlightSuretyData is FlightSuretyBase {
      *
      */
 
-    function buy(address airline, address passager, bytes32 flightKey) external payable 
-        requireAuthorizedContract
-        requireIsOperational{
-            bytes32 insuranceKey = getInsurancetKey(passager, flightKey);
-            require(!insurances[insuranceKey].bought,'insurence for this flight has been bought');
-            insurances[insuranceKey].passager = passager;
-            insurances[insuranceKey].airline = airline;
-            insurances[insuranceKey].premiun = msg.value;
-            insurances[insuranceKey].bought = true;
+    function buy(
+        address airline,
+        address passager,
+        bytes32 flightKey
+    ) external payable requireAuthorizedContract requireIsOperational {
+        bytes32 insuranceKey = getInsurancetKey(passager, flightKey);
+        require(
+            !insurances[insuranceKey].bought,
+            "insurence for this flight has been bought"
+        );
+        insurances[insuranceKey].passager = passager;
+        insurances[insuranceKey].airline = airline;
+        insurances[insuranceKey].premium = msg.value;
+        insurances[insuranceKey].bought = true;
 
-            emit InsuranceBought(insuranceKey, passager, airline);
-        }
+        emit InsuranceBought(insuranceKey, passager, airline);
+    }
 
     /**
      *  @dev Credits payouts to insurees
      */
-    function creditInsurees() external pure {}
+    function creditInsurees(
+        address airline,
+        address passager,
+        bytes32 flightKey
+    ) external requireAuthorizedContract requireIsOperational {
+        bytes32 insuranceKey = getInsurancetKey(passager, flightKey);
+        require(
+            !insurances[insuranceKey].bought,
+            "insurence for this flight has been bought"
+        );
+        require(
+            !insurances[insuranceKey].paid,
+            "insurence for this flight has been paid"
+        );
+        uint256 premium = insurances[insuranceKey].premium;
+        forPay[passager] += premium.div(2).add(premium);
+    }
 
     /**
      *  @dev Transfers eligible payout funds to insuree
      *
      */
-    function pay() external pure {}
+    function pay(address passager)
+        external
+        requireAuthorizedContract
+        requireIsOperational
+    {
+        uint256 value = forPay[passager];
+        forPay[passager] = 0;
+        passager.transfer(value);
+    }
 
     /**
      * @dev Initial funding for the insurance. Unless there are too many delayed flights

@@ -17,26 +17,51 @@ contract('[Passager] Flight Surety Tests', async (accounts) => {
         // ARRANGE
         let tx = await config.flightSuretyApp.registerFlight('flight1', 123, { from: config.owner });
 
-        let balance = await web3.eth.getBalance(config.flightSuretyData.address)
+        let balance = web3.utils.toBN(await web3.eth.getBalance(config.flightSuretyData.address))
 
         // ACT
         let result = await config.flightSuretyApp.buyInsurance(config.owner, 'flight1', 123, { from: accounts[2], value: 100 });
         // ASSERT
-        let balanceAfter = await web3.eth.getBalance(config.flightSuretyData.address)
-        assert.equal(balanceAfter - balance, 100, "balance of data contract should increase");
+        let balanceAfter = web3.utils.toBN(await web3.eth.getBalance(config.flightSuretyData.address))
+        assert.equal(balanceAfter.sub(balance).toString(), web3.utils.toBN('100').toString(), "balance of data contract should increase");
 
     });
 
     it(`(passager) buy insurance for unregistered flight`, async function () {
 
         // ARRANGE
-        let balance = await web3.eth.getBalance(config.flightSuretyData.address)
-
+        let balance = web3.utils.toBN(await web3.eth.getBalance(config.flightSuretyData.address))
         // ACT
         await truffleAssertations.reverts(config.flightSuretyApp.buyInsurance(config.owner, 'flight2', 123, { from: accounts[2], value: 100 }));
         // ASSERT
-        let balanceAfter = await web3.eth.getBalance(config.flightSuretyData.address)
-        assert.equal(balanceAfter - balance, 0, "balance of data contract should increase");
+        let balanceAfter = web3.utils.toBN(await web3.eth.getBalance(config.flightSuretyData.address))
+        assert.equal(balanceAfter.sub(balance).toString(), web3.utils.toBN(0).toString(), "balance of data contract should increase");
+
+    });
+
+    it(`(passager) buy insurance with change`, async function () {
+
+        // ARRANGE
+        let caller = accounts[7]
+        const balance = await web3.eth.getBalance(caller)
+        // ACT
+        let result = await config.flightSuretyApp.buyInsurance(config.owner, 'flight1', 123, { from: caller, value: web3.utils.toWei('12', 'ether') });
+        // ASSERT
+        const balanceAfter = await web3.eth.getBalance(caller)
+
+        const beforeInWei = web3.utils.toBN(balance)
+        const afterInWei = web3.utils.toBN(balanceAfter)
+
+        const gasUsed = web3.utils.toBN(result.receipt.gasUsed);
+
+        // Obtain gasPrice from the transaction
+        const tx = await web3.eth.getTransaction(result.tx);
+
+        const gasPrice = web3.utils.toBN(tx.gasPrice);
+        const totalGas = web3.utils.toBN(result.receipt.gasUsed)
+        const totalGasUsed = gasPrice.mul(totalGas)
+        // Final balance
+        assert.equal(beforeInWei.sub(afterInWei).sub(totalGasUsed), web3.utils.toWei('1', 'ether'), "Must be equal");
 
     });
 });
