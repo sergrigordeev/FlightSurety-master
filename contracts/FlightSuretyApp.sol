@@ -19,6 +19,10 @@ interface IFlightSuretyData {
         address passager,
         bytes32 flightKey
     ) external payable;
+
+    function creditInsurees(address passager, bytes32 flightKey) external;
+
+    function pay(address passager) external;
 }
 
 /************************************************** */
@@ -26,7 +30,21 @@ interface IFlightSuretyData {
 /************************************************** */
 contract FlightSuretyApp is FlightSuretyBase {
     using SafeMath for uint256; // Allow SafeMath functions to be called for all uint256 types (similar to "prototype" in Javascript)
+    event InsureesCredited(
+        address passager,
+        address airline,
+        string flight,
+        uint256 timestamp
+    );
+    event FlightRegisterd(
+        bytes32 flightKey,
+        address airline,
+        string flight,
+        uint256 timestamp
+    );
 
+    event FlightUpdated(address airline, string flight, uint256 timestamp);
+    event InsureesPaid(address passager);
     /********************************************************************************************/
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
@@ -84,6 +102,29 @@ contract FlightSuretyApp is FlightSuretyBase {
     /********************************************************************************************/
     /*                                     SMART CONTRACT FUNCTIONS                             */
     /********************************************************************************************/
+    function requestInsurees(
+        address passager,
+        address airline,
+        string flight,
+        uint256 timestamp
+    ) external requireIsOperational {
+        bytes32 flightKey = getFlightKey(airline, flight, timestamp);
+        Flight storage currentFlight = flights[flightKey];
+        require(currentFlight.isRegistered, "flight is not registered");
+        require(
+            currentFlight.statusCode == STATUS_CODE_LATE_AIRLINE,
+            "wrong flight status"
+        );
+
+        dataContract.creditInsurees(passager, flightKey);
+        emit InsureesCredited(passager, airline, flight, timestamp);
+    }
+
+    function withdrow() external requireIsOperational {
+        dataContract.pay(msg.sender);
+        emit InsureesPaid(msg.sender);
+    }
+
     function buyInsurance(
         address airline,
         string flight,
@@ -98,8 +139,12 @@ contract FlightSuretyApp is FlightSuretyBase {
             msg.value <= 1 ether,
             "only payment up to 1 ether is acceptable"
         );
-       
-        dataContract.buy.value(msg.value)(airline, msg.sender, flightKey);
+        uint256 investment = msg.value > 1 ether ? 1 ether : msg.value;
+        if (msg.value > 1 ether) {
+            msg.sender.transfer(msg.value.sub(investment));
+        }
+
+        dataContract.buy.value(investment)(airline, msg.sender, flightKey);
     }
 
     /**
@@ -165,7 +210,14 @@ contract FlightSuretyApp is FlightSuretyBase {
         string memory flight,
         uint256 timestamp,
         uint8 statusCode
-    ) internal pure {}
+    ) internal {
+        bytes32 flightKey = getFlightKey(airline, flight, timestamp);
+        require(flights[flightKey].isRegistered, "unknown flight");
+        flights[flightKey].statusCode = statusCode;
+        flights[flightKey].updatedTimestamp = timestamp;
+
+        emit FlightUpdated(flights[flightKey].airline, flight, timestamp);
+    }
 
     // Generate a request for oracles to fetch flight information
     function fetchFlightStatus(
@@ -219,12 +271,7 @@ contract FlightSuretyApp is FlightSuretyBase {
     mapping(bytes32 => ResponseInfo) private oracleResponses;
 
     // Event fired each time an oracle submits a response
-    event FlightRegisterd(
-        bytes32 flightKey,
-        address airline,
-        string flight,
-        uint256 timestamp
-    );
+
     event FlightStatusInfo(
         address airline,
         string flight,

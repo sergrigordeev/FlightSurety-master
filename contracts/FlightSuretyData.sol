@@ -90,6 +90,7 @@ contract FlightSuretyData is FlightSuretyBase {
     /********************************************************************************************/
     function getAirline(address airlineAddress)
         internal
+        view
         returns (Airline storage)
     {
         return airlines[airlineAddress];
@@ -146,15 +147,15 @@ contract FlightSuretyData is FlightSuretyBase {
     /**
      *  @dev Credits payouts to insurees
      */
-    function creditInsurees(
-        address airline,
-        address passager,
-        bytes32 flightKey
-    ) external requireAuthorizedContract requireIsOperational {
+    function creditInsurees(address passager, bytes32 flightKey)
+        external
+        requireAuthorizedContract
+        requireIsOperational
+    {
         bytes32 insuranceKey = getInsurancetKey(passager, flightKey);
         require(
-            !insurances[insuranceKey].bought,
-            "insurence for this flight has been bought"
+            insurances[insuranceKey].bought,
+            "insurence for this flight hasn't been bought"
         );
         require(
             !insurances[insuranceKey].paid,
