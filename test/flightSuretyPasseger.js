@@ -2,7 +2,8 @@ var Test = require('../config/testConfig.js');
 var truffleAssertations = require('truffle-assertions');;
 var BigNumber = require('bignumber.js');
 const STATUS_CODE_LATE_AIRLINE = 20;
-contract('[Passager] Flight Surety Tests', async (accounts) => {
+//contract('[', async (accounts) => {
+contract('[Passager] Flight Surety Tests', function (accounts) {
     const flight = 'flight1'
     const timestamp = 123
     var config;
@@ -25,7 +26,7 @@ contract('[Passager] Flight Surety Tests', async (accounts) => {
         let result = await config.flightSuretyApp.buyInsurance(config.owner, flight, timestamp, { from: caller, value: web3.utils.toWei('1', 'ether') });
         // ASSERT
         let balanceAfter = web3.utils.toBN(await web3.eth.getBalance(config.flightSuretyData.address))
-        assert.equal(balanceAfter.sub(balance).toString(), web3.utils.toWei('1', 'ether'), "balance of data contract should increase");
+        assert.equal(balanceAfter.sub(web3.utils.toBN(web3.utils.toWei('1', 'ether'))).toString(), balance , "balance of data contract should increase");
 
     });
 
@@ -46,7 +47,9 @@ contract('[Passager] Flight Surety Tests', async (accounts) => {
 
         // ARRANGE
         let caller = accounts[7]
+        await config.flightSuretyApp.registerFlight(flight, timestamp, { from: config.owner });
         const balance = await web3.eth.getBalance(caller)
+        
         // ACT
         let result = await config.flightSuretyApp.buyInsurance(config.owner, flight, timestamp, { from: caller, value: web3.utils.toWei('12', 'ether') });
         // ASSERT
@@ -96,6 +99,7 @@ contract('[Passager] Flight Surety Tests', async (accounts) => {
 
         // ARRANGE
         let caller = accounts[2]
+        await config.flightSuretyApp.registerFlight(flight, timestamp, { from: config.owner });
         const balanceBefore = web3.utils.toBN(await web3.eth.getBalance(caller))
 
         for (let a = 1; a < 10; a++) {
@@ -121,12 +125,8 @@ contract('[Passager] Flight Surety Tests', async (accounts) => {
                     await config.flightSuretyApp.submitOracleResponse(oracleIndexes[idx], config.owner, flight, timestamp, STATUS_CODE_LATE_AIRLINE, { from: accounts[a] });
                     await config.flightSuretyApp.submitOracleResponse(oracleIndexes[idx], config.owner, flight, timestamp, STATUS_CODE_LATE_AIRLINE, { from: accounts[a] });
                     await config.flightSuretyApp.submitOracleResponse(oracleIndexes[idx], config.owner, flight, timestamp, STATUS_CODE_LATE_AIRLINE, { from: accounts[a] });
-                    
                 }
-                catch (e) {
-
-                }
-
+                catch (e) {}
             }
         }
 

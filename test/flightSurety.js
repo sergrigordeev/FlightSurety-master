@@ -3,7 +3,7 @@ var Test = require('../config/testConfig.js');
 var truffleAssertations = require('truffle-assertions');;
 var BigNumber = require('bignumber.js');
 
-contract('[Airline] Flight Surety Tests', async (accounts) => {
+contract('[Airline] Flight Surety Tests', (accounts) => {
 
     var config;
     before('setup contract', async () => {
@@ -119,11 +119,9 @@ contract('[Airline] Flight Surety Tests', async (accounts) => {
         // ACT
 
         await config.flightSuretyApp.registerAirline(fifthAirline, { from: config.owner });
-        await truffleAssertations.reverts(config.flightSuretyData.fund({ from: fifthAirline, value: web3.utils.toWei('10', 'ether') }));
 
         await config.flightSuretyApp.registerAirline(fifthAirline, { from: secondAirline });
         await config.flightSuretyApp.registerAirline(fifthAirline, { from: secondAirline });
-        await truffleAssertations.reverts(config.flightSuretyData.fund({ from: fifthAirline, value: web3.utils.toWei('10', 'ether') }));
 
         await config.flightSuretyApp.registerAirline(fifthAirline, { from: thirdAirline });
 
@@ -162,15 +160,15 @@ contract('[Airline] Flight Surety Tests', async (accounts) => {
     it('(airline) register flight by stranger', async () => {
 
         // ARRANGE
-        let caller = accounts[6];
+        let caller = accounts[7];
 
         // ACT | ASSERT
         await truffleAssertations.reverts(
-            config.flightSuretyApp.registerFlight('flight1', 123, { from: caller })
+            config.flightSuretyApp.registerFlight('flight-not-registered', 123, { from: caller })
         );
     });
 
-    it('(airline) register flight by inactiveairline', async () => {
+    it('(airline) register flight by inactive airline', async () => {
 
         // ARRANGE
         let caller = accounts[6];
@@ -185,7 +183,7 @@ contract('[Airline] Flight Surety Tests', async (accounts) => {
         await config.flightSuretyApp.registerAirline(caller, { from: fifthAirline });
         // ACT | ASSERT
         await truffleAssertations.reverts(
-            config.flightSuretyApp.registerFlight('flight1', 123, { from: caller })
+            config.flightSuretyApp.registerFlight('flight-inactive-airline', 123, { from: caller })
         );
     });
 });

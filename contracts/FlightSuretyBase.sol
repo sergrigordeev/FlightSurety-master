@@ -1,4 +1,5 @@
-pragma solidity ^0.4.25;
+//SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
 
 contract FlightSuretyBase {
     address private contractOwner; // Account used to deploy contract

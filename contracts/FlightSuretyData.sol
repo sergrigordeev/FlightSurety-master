@@ -1,6 +1,7 @@
-pragma solidity ^0.4.25;
+//SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
 
-import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./FlightSuretyBase.sol";
 
 contract FlightSuretyData is FlightSuretyBase {
@@ -100,7 +101,7 @@ contract FlightSuretyData is FlightSuretyBase {
         return count;
     }
 
-    function isAirline(address airlineAddress) external returns (bool) {
+    function isAirline(address airlineAddress) external view returns (bool) {
         return getAirline(airlineAddress).active;
     }
 
@@ -118,6 +119,7 @@ contract FlightSuretyData is FlightSuretyBase {
         Airline storage airline = getAirline(airlineAddress);
         require(!airline.active, "airline already active");
         airline.registered = true;
+        airline.active = false;
         emit AirlineRegistered(airlineAddress);
     }
 
@@ -176,7 +178,7 @@ contract FlightSuretyData is FlightSuretyBase {
     {
         uint256 value = forPay[passager];
         forPay[passager] = 0;
-        passager.transfer(value);
+        payable(passager).transfer(value);
     }
 
     /**
@@ -184,11 +186,10 @@ contract FlightSuretyData is FlightSuretyBase {
      *      resulting in insurance payouts, the contract should be self-sustaining
      *
      */
-
     function fund() public payable {
         Airline storage airline = getAirline(msg.sender);
         require(airline.registered, "only for registered airlines");
-        require(!airline.active, "only for registered airlines");
+        require(!airline.active, "airline is active already");
         airline.active = true;
         airline.balance = msg.value;
         count = count + 1;
@@ -199,7 +200,7 @@ contract FlightSuretyData is FlightSuretyBase {
      * @dev Fallback function for funding smart contract.
      *
      */
-    function() external payable {
+    fallback() external payable {
         fund();
     }
 }
