@@ -44,7 +44,7 @@ contract FlightSuretyApp is FlightSuretyBase {
         uint256 timestamp
     );
 
-    event FlightUpdated(address airline, string flight, uint256 timestamp);
+    event FlightUpdated(address airline, string flight, uint256 timestamp, uint8 statusCode);
     event InsureesPaid(address passager);
     event VotedAccepted(address airline, address voter, uint256 count);
     /********************************************************************************************/
@@ -223,7 +223,7 @@ contract FlightSuretyApp is FlightSuretyBase {
         flights[flightKey].statusCode = statusCode;
         flights[flightKey].updatedTimestamp = timestamp;
 
-        emit FlightUpdated(flights[flightKey].airline, flight, timestamp);
+        emit FlightUpdated(flights[flightKey].airline, flight, timestamp, statusCode);
     }
 
     // Generate a request for oracles to fetch flight information

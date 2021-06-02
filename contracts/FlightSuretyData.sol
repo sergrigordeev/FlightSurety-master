@@ -44,7 +44,7 @@ contract FlightSuretyData is FlightSuretyBase {
      * @dev Constructor
      *      The deploying account becomes contractOwner
      */
-    constructor() public {
+    constructor() {
         setOwner(msg.sender);
         airlines[msg.sender].registered = true;
         airlines[msg.sender].active = true;
